@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Jupyter & temp files
+.ipynb_checkpoints/
+*.swp
+*.swo
+
+# System
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.env
+.venv/
+venv/
+env/
+ENV/
+
+# Logs
+*.log
+
+# OS junk
+ehthumbs.db
+Icon?
+
+# Plot images (optional - silmek istemiyorsan yorum satırı yap)
+# *.png
+
+# MacOS özel
+._*
+
+# VSCode
+.vscode/
+
+# Data
+*.csv
+
