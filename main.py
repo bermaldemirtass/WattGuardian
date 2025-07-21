@@ -1,26 +1,25 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-import seaborn as sns
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.layers import Input, Dense, LSTM
 
-# Veriyi oku
+# Veriyi yükle
 df = pd.read_csv("energydata_complete.csv")
-data = df[["Appliances"]].values
 
-# Normalize et
+# Sadece sayısal verileri al (LSTM için)
+df_scaled = df.drop(columns=["date"])
 scaler = MinMaxScaler()
-data_scaled = scaler.fit_transform(data)
+df_scaled = pd.DataFrame(scaler.fit_transform(df_scaled), columns=df_scaled.columns)
 
 print("Veri yüklendi ve normalize edildi.")
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense
 
-# Train-test ayır
-X_train, X_test = train_test_split(data_scaled, test_size=0.2, shuffle=False)
+### ------------------ ANOMALY DETECTION ------------------ ###
+X_anom = df_scaled[["Appliances"]].values
+X_train, X_test = train_test_split(X_anom, test_size=0.2, shuffle=False)
 
-# Autoencoder mimarisi
 input_dim = X_train.shape[1]
 input_layer = Input(shape=(input_dim,))
 encoded = Dense(8, activation='relu')(input_layer)
@@ -28,27 +27,17 @@ decoded = Dense(input_dim, activation='sigmoid')(encoded)
 
 autoencoder = Model(input_layer, decoded)
 autoencoder.compile(optimizer='adam', loss='mse')
+autoencoder.fit(X_train, X_train,
+                epochs=20,
+                batch_size=64,
+                validation_data=(X_test, X_test),
+                shuffle=False)
 
-# Modeli eğit
-history = autoencoder.fit(X_train, X_train,
-                          epochs=20,
-                          batch_size=64,
-                          validation_data=(X_test, X_test),
-                          shuffle=False)
-
-print("Autoencoder eğitimi tamamlandı.")
-
-# Yeniden yapılandırma hatalarını hesapla
 reconstructions = autoencoder.predict(X_test)
 mse = np.mean(np.power(X_test - reconstructions, 2), axis=1)
-
-# Eşik değeri belirle (ortalama + 2 std)
 threshold = np.mean(mse) + 2 * np.std(mse)
-
-# Anomalileri işaretle
 anomalies = mse > threshold
 
-# Sonuçları görselleştir
 plt.figure(figsize=(10, 5))
 plt.plot(mse, label="Reconstruction Error")
 plt.hlines(threshold, xmin=0, xmax=len(mse), colors="red", label="Threshold")
@@ -58,19 +47,13 @@ plt.ylabel("MSE")
 plt.legend()
 plt.tight_layout()
 plt.savefig("anomaly_detection_plot.png")
-plt.show()
+plt.close()
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
-
-# Tüketimi tahmin edeceğimiz hedef sütun
+### ------------------ FORECASTING (LSTM) ------------------ ###
 target_column = "Appliances"
-
-# Giriş verisi ve hedefi ayır
-X = df_scaled.drop(target_column, axis=1)
+X = df_scaled.drop(columns=[target_column])
 y = df_scaled[target_column]
 
-# Zaman serisi formatına getir
 def create_sequences(X, y, time_steps=10):
     Xs, ys = [], []
     for i in range(len(X) - time_steps):
@@ -81,20 +64,17 @@ def create_sequences(X, y, time_steps=10):
 time_steps = 10
 X_seq, y_seq = create_sequences(X, y, time_steps)
 
-# Eğitim ve test ayırımı
 split = int(0.8 * len(X_seq))
 X_train, X_test = X_seq[:split], X_seq[split:]
 y_train, y_test = y_seq[:split], y_seq[split:]
 
-# LSTM modeli
 model = Sequential([
     LSTM(64, input_shape=(X_train.shape[1], X_train.shape[2])),
     Dense(1)
 ])
 model.compile(optimizer='adam', loss='mse')
-history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=10, batch_size=64)
+model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=10, batch_size=64)
 
-# Tahmin ve karşılaştırma
 y_pred = model.predict(X_test)
 
 plt.figure(figsize=(10, 5))
@@ -106,7 +86,5 @@ plt.ylabel("Appliance Energy Usage")
 plt.legend()
 plt.tight_layout()
 plt.savefig("forecasting_plot.png")
-plt.savefig("anomaly_plot.png")
-
-plt.show()
+plt.close()
 
