@@ -88,3 +88,32 @@ plt.tight_layout()
 plt.savefig("forecasting_plot.png")
 plt.close()
 
+# Anomalileri çıkar ve kaydet
+if 'is_anomaly' in df.columns:
+    anomalies = df[df['is_anomaly'] == True]
+    anomalies.to_csv("anomalies.csv", index=False)
+    print("Anomaliler anomalies.csv olarak kaydedildi ✅")
+else:
+    print("❌ is_anomaly kolonu bulunamadı.")
+
+import pandas as pd
+
+# Veri setini oku
+df = pd.read_csv("energydata_complete.csv", parse_dates=["date"])
+
+# Appliances tüketiminde z-score kullanarak anomali tespiti
+mean = df['Appliances'].mean()
+std = df['Appliances'].std()
+
+# Z-score yöntemi ile threshold belirleyelim
+threshold = 3  # istersen 2.5 yapabilirsin
+df['z_score'] = (df['Appliances'] - mean) / std
+df['is_anomaly'] = df['z_score'].abs() > threshold
+
+# Sadece anomalileri al
+anomalies = df[df['is_anomaly'] == True]
+
+# anomalies.csv olarak kaydet
+anomalies.to_csv("anomalies.csv", index=False)
+print(f"✅ {len(anomalies)} adet anomali anomalies.csv olarak kaydedildi.")
+
