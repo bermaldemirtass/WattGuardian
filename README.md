@@ -23,6 +23,13 @@ WattGuardian provides two core functionalities:
    - ⬇️ Download detected anomalies as CSV
    - 🌙 Enjoy modern dark-themed styling with custom CSS
 
+ 📷 **Streamlit UI Preview**
+
+Main Interface:
+![Overview](streamlit_overview.png)
+
+Anomaly Detection in Action:
+![Anomalies](streamlit_anomalies.png)
 ---
 
  📊 Visual Results
